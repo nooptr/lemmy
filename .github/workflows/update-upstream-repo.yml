@@ -1,0 +1,19 @@
+name: Sync Fork with Upstream
+on:
+   schedule:
+      # UTC
+      - cron: "38 * * * *"
+   workflow_dispatch:
+jobs:
+   sync:
+      runs-on: ubuntu-latest
+      permissions:
+         contents: write
+         pull-requests: write
+      steps:
+         - uses: tgymnich/fork-sync@v1.8
+           with:
+              owner: badlogic
+              repo: lemmy
+              base: main
+              head: main
