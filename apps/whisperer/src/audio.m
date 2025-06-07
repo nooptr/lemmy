@@ -55,14 +55,24 @@ int audio_recorder_start_file(AudioRecorder* recorder, const char* filename) {
         NSString* nsFilename = [NSString stringWithUTF8String:filename];
         recorder->fileURL = [NSURL fileURLWithPath:nsFilename];
         
-        // Get the input format from the input node
+        // Get input format
         AVAudioFormat* inputFormat = [recorder->inputNode outputFormatForBus:0];
         
-        // Use the input format for the file to avoid conversion issues
+        // Create our desired output format
+        AVAudioFormat* outputFormat = [[AVAudioFormat alloc] 
+            initStandardFormatWithSampleRate:recorder->config.sample_rate
+            channels:recorder->config.channels];
+        
+        if (!outputFormat) {
+            NSLog(@"Failed to create output format");
+            return -1;
+        }
+        
+        // Create audio file with our desired format
         NSError* error = nil;
         recorder->audioFile = [[AVAudioFile alloc] 
             initForWriting:recorder->fileURL
-            settings:inputFormat.settings
+            settings:outputFormat.settings
             error:&error];
         
         if (error) {
@@ -70,15 +80,60 @@ int audio_recorder_start_file(AudioRecorder* recorder, const char* filename) {
             return -1;
         }
         
-        // Install tap on input node using the input format
+        // Create converter for format conversion
+        AVAudioConverter* converter = [[AVAudioConverter alloc] 
+            initFromFormat:inputFormat 
+            toFormat:outputFormat];
+        
+        if (!converter) {
+            NSLog(@"Failed to create audio converter");
+            return -1;
+        }
+        
+        // Install tap with conversion
         [recorder->inputNode installTapOnBus:0 
             bufferSize:1024 
             format:inputFormat
             block:^(AVAudioPCMBuffer* buffer, AVAudioTime* when) {
-                NSError* writeError = nil;
-                [recorder->audioFile writeFromBuffer:buffer error:&writeError];
-                if (writeError) {
-                    NSLog(@"Error writing audio: %@", writeError.localizedDescription);
+                (void)when; // silence warning
+                
+                // Calculate output buffer capacity
+                AVAudioFrameCount outputCapacity = (AVAudioFrameCount)(buffer.frameLength * outputFormat.sampleRate / inputFormat.sampleRate) + 1;
+                AVAudioPCMBuffer* outputBuffer = [[AVAudioPCMBuffer alloc] 
+                    initWithPCMFormat:outputFormat 
+                    frameCapacity:outputCapacity];
+                
+                if (!outputBuffer) {
+                    NSLog(@"Failed to create output buffer");
+                    return;
+                }
+                
+                // Convert audio
+                __block BOOL inputConsumed = NO;
+                NSError* conversionError = nil;
+                
+                AVAudioConverterOutputStatus status = [converter convertToBuffer:outputBuffer 
+                    error:&conversionError 
+                    withInputFromBlock:^AVAudioBuffer*(AVAudioPacketCount inNumberOfPackets, AVAudioConverterInputStatus* outStatus) {
+                        (void)inNumberOfPackets;
+                        if (inputConsumed) {
+                            *outStatus = AVAudioConverterInputStatus_NoDataNow;
+                            return nil;
+                        } else {
+                            *outStatus = AVAudioConverterInputStatus_HaveData;
+                            inputConsumed = YES;
+                            return buffer;
+                        }
+                    }];
+                
+                if (status == AVAudioConverterOutputStatus_HaveData && !conversionError) {
+                    NSError* writeError = nil;
+                    [recorder->audioFile writeFromBuffer:outputBuffer error:&writeError];
+                    if (writeError) {
+                        NSLog(@"Error writing audio: %@", writeError.localizedDescription);
+                    }
+                } else if (conversionError) {
+                    NSLog(@"Audio conversion error: %@", conversionError.localizedDescription);
                 }
             }];
         
@@ -129,6 +184,7 @@ int audio_recorder_start_buffer(AudioRecorder* recorder) {
             bufferSize:1024 
             format:format 
             block:^(AVAudioPCMBuffer* buffer, AVAudioTime* when) {
+                (void)when; // silence warning
                 // Convert to float data and append to buffer
                 float* channelData = buffer.floatChannelData[0];
                 NSUInteger frameCount = buffer.frameLength;
