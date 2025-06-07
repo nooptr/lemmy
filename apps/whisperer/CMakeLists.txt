@@ -26,16 +26,25 @@ if(NOT COREFOUNDATION_FRAMEWORK)
     message(FATAL_ERROR "CoreFoundation framework not found")
 endif()
 
-# Source files
-set(SOURCES
+# Source files for whisperer
+set(WHISPERER_SOURCES
     src/main.c
     src/keylogger.c
 )
 
-# Create the executable
-add_executable(whisperer ${SOURCES})
+# Source files for recorder
+set(RECORDER_SOURCES
+    src/Recorder.c
+    src/audio.m
+)
 
-# Link frameworks
+# Create the whisperer executable
+add_executable(whisperer ${WHISPERER_SOURCES})
+
+# Create the recorder executable
+add_executable(recorder ${RECORDER_SOURCES})
+
+# Link frameworks for whisperer
 target_link_libraries(whisperer
     ${APPLICATION_SERVICES_FRAMEWORK}
     ${AVFOUNDATION_FRAMEWORK}
@@ -43,13 +52,28 @@ target_link_libraries(whisperer
     ${COREFOUNDATION_FRAMEWORK}
 )
 
-# Set output directory
-set_target_properties(whisperer PROPERTIES
+# Link frameworks for recorder
+target_link_libraries(recorder
+    ${AVFOUNDATION_FRAMEWORK}
+    ${APPKIT_FRAMEWORK}
+    ${COREFOUNDATION_FRAMEWORK}
+)
+
+# Set output directory for both executables
+set_target_properties(whisperer recorder PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}
 )
 
 # Compiler flags for macOS
 target_compile_options(whisperer PRIVATE
+    -Wall
+    -Wextra
+    -Werror
+    -Wno-error=unused-parameter
+    -Wno-error=unused-function
+)
+
+target_compile_options(recorder PRIVATE
     -Wall
     -Wextra
     -Werror
