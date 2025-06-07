@@ -3,11 +3,14 @@
 #include <ApplicationServices/ApplicationServices.h>
 #include <sys/time.h>
 
+// Forward declarations for functions in main.c
+extern void fn_key_pressed(void);
+extern void fn_key_released(void);
+
 // Global state
 static bool fnKeyPressed = false;
 static CFMachPortRef eventTap = NULL;
 static CFRunLoopSourceRef runLoopSource = NULL;
-static bool recording = false;
 
 // Get timestamp in milliseconds
 static long long getCurrentTimeMillis() {
@@ -18,16 +21,10 @@ static long long getCurrentTimeMillis() {
 
 // Handle FN key events
 static void handleFnKeyEvent(bool pressed) {
-    if (pressed && !recording) {
-        recording = true;
-        printf("🎤 Recording started...\n");
-        fflush(stdout);
-        // TODO: Start audio recording
-    } else if (!pressed && recording) {
-        recording = false;
-        printf("🛑 Recording stopped...\n");
-        fflush(stdout);
-        // TODO: Stop recording, transcribe, paste
+    if (pressed) {
+        fn_key_pressed();
+    } else {
+        fn_key_released();
     }
 }
 

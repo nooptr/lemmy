@@ -44,15 +44,13 @@ endif()
 
 # Source files for whisperer
 set(WHISPERER_SOURCES
-    src/main.c
+    src/main.m
     src/keylogger.c
+    src/audio.m
 )
 
-# Add transcription sources if whisper.cpp is available
-if(WHISPER_AVAILABLE)
-    list(APPEND WHISPERER_SOURCES src/transcription.cpp)
-    add_compile_definitions(WHISPER_AVAILABLE)
-endif()
+# Add transcription sources
+list(APPEND WHISPERER_SOURCES src/transcription.cpp)
 
 # Source files for recorder
 set(RECORDER_SOURCES
@@ -82,27 +80,29 @@ target_link_libraries(whisperer
     ${COREFOUNDATION_FRAMEWORK}
 )
 
-# Link whisper.cpp if available
-if(WHISPER_AVAILABLE)
-    # Add whisper.cpp build directory to find the whisper target
-    add_subdirectory(${WHISPER_DIR} ${WHISPER_BUILD_DIR} EXCLUDE_FROM_ALL)
-    
-    target_include_directories(whisperer PRIVATE ${WHISPER_DIR})
-    target_link_libraries(whisperer whisper)
-    
-    # Link Metal framework for GPU acceleration
-    find_library(METAL_FRAMEWORK Metal)
-    find_library(METALKIT_FRAMEWORK MetalKit)
-    find_library(METALPERFORMANCE_FRAMEWORK MetalPerformanceShaders)
-    
-    if(METAL_FRAMEWORK AND METALKIT_FRAMEWORK AND METALPERFORMANCE_FRAMEWORK)
-        target_link_libraries(whisperer
-            ${METAL_FRAMEWORK}
-            ${METALKIT_FRAMEWORK}
-            ${METALPERFORMANCE_FRAMEWORK}
-        )
-        message(STATUS "Linked Metal frameworks for GPU acceleration")
-    endif()
+# Link whisper.cpp - required for app to work
+if(NOT WHISPER_AVAILABLE)
+    message(FATAL_ERROR "whisper.cpp library not found. Run ./build.sh to build whisper.cpp first.")
+endif()
+
+# Add whisper.cpp build directory to find the whisper target
+add_subdirectory(${WHISPER_DIR} ${WHISPER_BUILD_DIR} EXCLUDE_FROM_ALL)
+
+target_include_directories(whisperer PRIVATE ${WHISPER_DIR})
+target_link_libraries(whisperer whisper)
+
+# Link Metal framework for GPU acceleration
+find_library(METAL_FRAMEWORK Metal)
+find_library(METALKIT_FRAMEWORK MetalKit)
+find_library(METALPERFORMANCE_FRAMEWORK MetalPerformanceShaders)
+
+if(METAL_FRAMEWORK AND METALKIT_FRAMEWORK AND METALPERFORMANCE_FRAMEWORK)
+    target_link_libraries(whisperer
+        ${METAL_FRAMEWORK}
+        ${METALKIT_FRAMEWORK}
+        ${METALPERFORMANCE_FRAMEWORK}
+    )
+    message(STATUS "Linked Metal frameworks for GPU acceleration")
 endif()
 
 # Link frameworks for recorder
