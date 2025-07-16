@@ -38,27 +38,27 @@ export class IndexGenerator {
 	}
 
 	async generateIndex(): Promise<void> {
-		console.log("🔄 Generating conversation index...");
-		console.log(`📁 Looking in: ${this.traceDir}/`);
+		console.log("Generating conversation index...");
+		console.log(`Looking in: ${this.traceDir}/`);
 
 		if (!fs.existsSync(this.traceDir)) {
-			console.log(`❌ Directory ${this.traceDir} not found`);
+			console.log(`Directory ${this.traceDir} not found`);
 			process.exit(1);
 		}
 
 		// Find all log files
 		const logFiles = this.findLogFiles();
-		console.log(`📋 Found ${logFiles.length} log files`);
+		console.log(`Found ${logFiles.length} log files`);
 
 		if (logFiles.length === 0) {
-			console.log("❌ No log files found");
+			console.log("No log files found");
 			process.exit(1);
 		}
 
 		// Process each log file
 		const allSummaries: LogSummary[] = [];
 		for (const logFile of logFiles) {
-			console.log(`\n🔄 Processing ${logFile}...`);
+			console.log(`\nProcessing ${logFile}...`);
 			const summary = await this.processLogFile(logFile);
 			if (summary) {
 				allSummaries.push(summary);
@@ -67,7 +67,7 @@ export class IndexGenerator {
 
 		// Generate index.html
 		await this.generateIndexHTML(allSummaries);
-		console.log(`\n✅ Index generated: ${this.traceDir}/index.html`);
+		console.log(`\nIndex generated: ${this.traceDir}/index.html`);
 	}
 
 	private findLogFiles(): string[] {
@@ -97,11 +97,11 @@ export class IndexGenerator {
 		}
 
 		if (needsRegeneration) {
-			console.log(`  🔄 Generating summary (${needsRegeneration ? "missing or outdated" : "up to date"})...`);
+			console.log(`  Generating summary (${needsRegeneration ? "missing or outdated" : "up to date"})...`);
 
 			// Ensure HTML file exists
 			if (!fs.existsSync(htmlPath)) {
-				console.log(`  📄 Generating HTML file...`);
+				console.log(`  Generating HTML file...`);
 				await this.htmlGenerator.generateHTMLFromJSONL(logPath, htmlPath);
 			}
 
@@ -111,10 +111,10 @@ export class IndexGenerator {
 
 			// Summarize non-compacted conversations with more than 2 messages
 			const nonCompactedConversations = conversations.filter((conv) => !conv.compacted && conv.messages.length > 2);
-			console.log(`  💬 Found ${nonCompactedConversations.length} non-compacted conversations (>2 messages)`);
+			console.log(`  Found ${nonCompactedConversations.length} non-compacted conversations (>2 messages)`);
 
 			for (const conversation of nonCompactedConversations) {
-				console.log(`    🤖 Summarizing conversation ${conversation.id}...`);
+				console.log(`    Summarizing conversation ${conversation.id}...`);
 				const summary = await this.summarizeConversation(conversation);
 				if (summary) {
 					summaries.push(summary);
@@ -130,10 +130,10 @@ export class IndexGenerator {
 			};
 
 			fs.writeFileSync(summaryPath, JSON.stringify(logSummary, null, 2));
-			console.log(`  ✅ Summary saved: ${summaryFile}`);
+			console.log(`  Summary saved: ${summaryFile}`);
 			return logSummary;
 		} else {
-			console.log(`  ✅ Using existing summary`);
+			console.log(`  Using existing summary`);
 			return JSON.parse(fs.readFileSync(summaryPath, "utf-8"));
 		}
 	}
@@ -179,7 +179,7 @@ SUMMARY: [summary]`;
 			const summaryMatch = claudeResponse.match(/SUMMARY:\s*([\s\S]+)/);
 
 			if (!titleMatch || !summaryMatch) {
-				console.log(`    ⚠️  Failed to parse Claude response for conversation ${conversation.id}`);
+				console.log(`    Failed to parse Claude response for conversation ${conversation.id}`);
 				return null;
 			}
 
@@ -192,7 +192,7 @@ SUMMARY: [summary]`;
 				models: Array.from(conversation.models),
 			};
 		} catch (error) {
-			console.log(`    ❌ Failed to summarize conversation ${conversation.id}: ${error}`);
+			console.log(`    Failed to summarize conversation ${conversation.id}: ${error}`);
 			return null;
 		}
 	}
@@ -233,8 +233,8 @@ SUMMARY: [summary]`;
 
 	private async callClaude(prompt: string): Promise<string> {
 		return new Promise((resolve, reject) => {
-			console.log("    📞 Calling Claude CLI for summarization...");
-			console.log("    💰 This will incur additional token usage");
+			console.log("    Calling Claude CLI for summarization...");
+			console.log("    This will incur additional token usage");
 
 			const child = spawn("claude", ["-p", prompt], {
 				stdio: ["pipe", "pipe", "pipe"],

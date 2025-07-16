@@ -188,9 +188,9 @@ function getClaudeAbsolutePath(): string {
 			return resolveToJsFile(localClaudePath);
 		}
 
-		log(`❌ Claude CLI not found in PATH`, "red");
-		log(`❌ Also checked for local installation at: ${localClaudeWrapper}`, "red");
-		log(`❌ Please install Claude Code CLI first`, "red");
+		log(`Claude CLI not found in PATH`, "red");
+		log(`Also checked for local installation at: ${localClaudeWrapper}`, "red");
+		log(`Please install Claude Code CLI first`, "red");
 		process.exit(1);
 	}
 }
@@ -199,7 +199,7 @@ function getLoaderPath(): string {
 	const loaderPath = path.join(__dirname, "interceptor-loader.js");
 
 	if (!fs.existsSync(loaderPath)) {
-		log(`❌ Interceptor loader not found at: ${loaderPath}`, "red");
+		log(`Interceptor loader not found at: ${loaderPath}`, "red");
 		process.exit(1);
 	}
 
@@ -212,18 +212,17 @@ async function runClaudeWithInterception(
 	includeAllRequests: boolean = false,
 	openInBrowser: boolean = false,
 ): Promise<void> {
-	log("🚀 Claude Trace", "blue");
+	log("Claude Trace", "blue");
 	log("Starting Claude with traffic logging", "yellow");
 	if (claudeArgs.length > 0) {
-		log(`🔧 Claude arguments: ${claudeArgs.join(" ")}`, "blue");
+		log(`Claude arguments: ${claudeArgs.join(" ")}`, "blue");
 	}
 	console.log("");
 
 	const claudePath = getClaudeAbsolutePath();
 	const loaderPath = getLoaderPath();
 
-	log("🔄 Starting traffic logger...", "green");
-	log("📁 Logs will be written to: .claude-trace/log-YYYY-MM-DD-HH-MM-SS.{jsonl,html}", "blue");
+	log("Starting traffic logger...", "green");
 	console.log("");
 
 	// Launch node with interceptor and absolute path to claude, plus any additional arguments
@@ -241,23 +240,23 @@ async function runClaudeWithInterception(
 
 	// Handle child process events
 	child.on("error", (error: Error) => {
-		log(`❌ Error starting Claude: ${error.message}`, "red");
+		log(`Error starting Claude: ${error.message}`, "red");
 		process.exit(1);
 	});
 
 	child.on("exit", (code: number | null, signal: string | null) => {
 		if (signal) {
-			log(`\n🔄 Claude terminated by signal: ${signal}`, "yellow");
+			log(`\nClaude terminated by signal: ${signal}`, "yellow");
 		} else if (code !== 0 && code !== null) {
-			log(`\n⚠️  Claude exited with code: ${code}`, "yellow");
+			log(`\nClaude exited with code: ${code}`, "yellow");
 		} else {
-			log("\n✅ Claude session completed", "green");
+			log("\nClaude session completed", "green");
 		}
 	});
 
 	// Handle our own signals
 	const handleSignal = (signal: string) => {
-		log(`\n🔄 Received ${signal}, shutting down...`, "yellow");
+		log(`\nReceived ${signal}, shutting down...`, "yellow");
 		if (child.pid) {
 			child.kill(signal as NodeJS.Signals);
 		}
@@ -274,7 +273,7 @@ async function runClaudeWithInterception(
 		});
 	} catch (error) {
 		const err = error as Error;
-		log(`❌ Unexpected error: ${err.message}`, "red");
+		log(`Unexpected error: ${err.message}`, "red");
 		process.exit(1);
 	}
 }
@@ -295,7 +294,7 @@ async function extractToken(): Promise<void> {
 	// Use the token extractor directly without copying
 	const tokenExtractorPath = path.join(__dirname, "token-extractor.js");
 	if (!fs.existsSync(tokenExtractorPath)) {
-		log(`❌ Token extractor not found at: ${tokenExtractorPath}`, "red");
+		log(`Token extractor not found at: ${tokenExtractorPath}`, "red");
 		process.exit(1);
 	}
 
@@ -323,7 +322,7 @@ async function extractToken(): Promise<void> {
 	const timeout = setTimeout(() => {
 		child.kill();
 		cleanup();
-		console.error("❌ Timeout: No token found within 30 seconds");
+		console.error("Timeout: No token found within 30 seconds");
 		process.exit(1);
 	}, 30000);
 
@@ -331,7 +330,7 @@ async function extractToken(): Promise<void> {
 	child.on("error", (error: Error) => {
 		clearTimeout(timeout);
 		cleanup();
-		console.error(`❌ Error starting Claude: ${error.message}`);
+		console.error(`Error starting Claude: ${error.message}`);
 		process.exit(1);
 	});
 
@@ -353,7 +352,7 @@ async function extractToken(): Promise<void> {
 		}
 
 		cleanup();
-		console.error("❌ No authorization token found");
+		console.error("No authorization token found");
 		process.exit(1);
 	});
 
@@ -392,13 +391,13 @@ async function generateHTMLFromCLI(
 
 		if (openInBrowser) {
 			spawn("open", [finalOutputFile], { detached: true, stdio: "ignore" }).unref();
-			log(`🌐 Opening ${finalOutputFile} in browser`, "green");
+			log(`Opening ${finalOutputFile} in browser`, "green");
 		}
 
 		process.exit(0);
 	} catch (error) {
 		const err = error as Error;
-		log(`❌ Error: ${err.message}`, "red");
+		log(`Error: ${err.message}`, "red");
 		process.exit(1);
 	}
 }
@@ -412,7 +411,7 @@ async function generateIndex(): Promise<void> {
 		process.exit(0);
 	} catch (error) {
 		const err = error as Error;
-		log(`❌ Error: ${err.message}`, "red");
+		log(`Error: ${err.message}`, "red");
 		process.exit(1);
 	}
 }
@@ -468,7 +467,7 @@ async function main(): Promise<void> {
 		}
 
 		if (!inputFile) {
-			log(`❌ Missing input file for --generate-html`, "red");
+			log(`Missing input file for --generate-html`, "red");
 			log(`Usage: claude-trace --generate-html input.jsonl [output.html]`, "yellow");
 			process.exit(1);
 		}
@@ -489,6 +488,6 @@ async function main(): Promise<void> {
 
 main().catch((error) => {
 	const err = error as Error;
-	log(`❌ Unexpected error: ${err.message}`, "red");
+	log(`Unexpected error: ${err.message}`, "red");
 	process.exit(1);
 });

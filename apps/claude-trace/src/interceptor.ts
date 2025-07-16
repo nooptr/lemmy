@@ -44,6 +44,11 @@ export class ClaudeTrafficLogger {
 
 		// Clear log file
 		fs.writeFileSync(this.logFile, "");
+
+		// Output the actual filenames
+		console.log(`Logs will be written to:`);
+		console.log(`  JSONL: ${this.logFile}`);
+		console.log(`  HTML:  ${this.htmlFile}`);
 	}
 
 	private isAnthropicAPI(url: string | URL): boolean {
@@ -440,9 +445,9 @@ export class ClaudeTrafficLogger {
 		if (shouldOpenBrowser && fs.existsSync(this.htmlFile)) {
 			try {
 				spawn("open", [this.htmlFile], { detached: true, stdio: "ignore" }).unref();
-				console.log(`🌐 Opening ${this.htmlFile} in browser`);
+				console.log(`Opening ${this.htmlFile} in browser`);
 			} catch (error) {
-				console.log(`❌ Failed to open browser: ${error}`);
+				console.log(`Failed to open browser: ${error}`);
 			}
 		}
 	}
