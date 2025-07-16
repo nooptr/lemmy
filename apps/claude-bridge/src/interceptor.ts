@@ -23,6 +23,7 @@ import {
 	type ToolResult,
 	type Attachment,
 	AskInput,
+	type OpenAIAskOptions,
 } from "@mariozechner/lemmy";
 import { lemmy } from "@mariozechner/lemmy";
 import { z } from "zod";
@@ -240,6 +241,12 @@ export class ClaudeBridgeInterceptor {
 				askOptions.maxOutputTokens = validation.adjustments.maxOutputTokens;
 			}
 
+			// Apply maxOutputTokens override from config if specified
+			if (this.config.maxOutputTokens) {
+				askOptions.maxOutputTokens = this.config.maxOutputTokens;
+				this.logger.log(`Overriding maxOutputTokens with config value: ${this.config.maxOutputTokens}`);
+			}
+
 			this.logger.log(`Calling ${this.clientInfo.provider} with model: ${this.clientInfo.model}`);
 			const askResult: AskResult = await this.clientInfo.client.ask(askInput, { context, ...askOptions });
 
@@ -421,18 +428,18 @@ export async function initializeInterceptor(config?: BridgeConfig): Promise<Clau
 		return globalInterceptor;
 	}
 
-	const defaultConfig: BridgeConfig = {
-		provider: (process.env["CLAUDE_BRIDGE_PROVIDER"] as Provider) || "openai",
-		model: process.env["CLAUDE_BRIDGE_MODEL"] || "gpt-4o",
-		apiKey: process.env["CLAUDE_BRIDGE_API_KEY"],
-		baseURL: process.env["CLAUDE_BRIDGE_BASE_URL"],
-		maxRetries: process.env["CLAUDE_BRIDGE_MAX_RETRIES"]
-			? parseInt(process.env["CLAUDE_BRIDGE_MAX_RETRIES"])
-			: undefined,
-		logDirectory: process.env["CLAUDE_BRIDGE_LOG_DIR"] || ".claude-bridge",
-		debug: process.env["CLAUDE_BRIDGE_DEBUG"] === "true",
-		trace: process.env["CLAUDE_BRIDGE_TRACE"] === "true",
-	};
+	// Parse BridgeConfig from JSON environment variable
+	if (!process.env["CLAUDE_BRIDGE_CONFIG"]) {
+		throw new Error("CLAUDE_BRIDGE_CONFIG environment variable not set");
+	}
+	
+	let defaultConfig: BridgeConfig;
+	try {
+		defaultConfig = JSON.parse(process.env["CLAUDE_BRIDGE_CONFIG"]);
+	} catch (error) {
+		console.error("❌ Failed to parse CLAUDE_BRIDGE_CONFIG:", error);
+		throw new Error("Invalid CLAUDE_BRIDGE_CONFIG JSON");
+	}
 
 	globalInterceptor = await ClaudeBridgeInterceptor.create({ ...defaultConfig, ...config });
 	globalInterceptor.instrumentFetch();

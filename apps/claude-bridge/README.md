@@ -22,14 +22,25 @@ claude-bridge                     # Show available providers
 claude-bridge openai              # Show OpenAI models
 claude-bridge openai gpt-4o       # Run Claude Code with GPT-4
 
-# Advanced usage
-claude-bridge openai gpt-4o --apiKey sk-...                           # Custom API key
-claude-bridge openai llama3.2 --baseURL http://localhost:11434/v1     # Local Ollama
-claude-bridge openai gpt-4o --baseURL https://openrouter.ai/api/v1 --apiKey sk-or-... # OpenRouter
-claude-bridge openai gpt-4o --debug                          # Enable debug logs
-claude-bridge --trace -p "Hello world"                       # Spy on Claude ↔ Anthropic communication
+ # Custom API key
+claude-bridge openai gpt-4o --apiKey sk-...
 
-# All Claude Code arguments work
+# Local Ollama
+claude-bridge openai llama3.2 --baseURL http://localhost:11434/v1
+
+# OpenRouter
+claude-bridge openai gpt-4o --baseURL https://openrouter.ai/api/v1 --apiKey sk-or-...
+
+# Groq
+claude-bridge openai moonshotai/kimi-k2-instruct --baseURL https://api.groq.com/openai/v1 --apiKey gsk_O...
+
+# Enable debug logs
+claude-bridge openai gpt-4o --debug
+
+# Spy on Claude ↔ Anthropic communication
+claude-bridge --trace -p "Hello world"
+
+# Pass Claude Code arguments after claude-bridge arguments
 claude-bridge google gemini-2.5-pro-preview-05-06 --resume --continue
 claude-bridge openai o4-mini -p "Hello world"
 ```

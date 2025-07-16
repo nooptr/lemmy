@@ -1,0 +1,7 @@
+[2025-07-16T22:03:45.666Z] Claude Bridge Logger Started
+[2025-07-16T22:03:45.668Z] Requests logged to .claude-bridge/requests-2025-07-16-22-03-45.jsonl
+[2025-07-16T22:03:45.668Z] Transformed requests logged to .claude-bridge/transformed-2025-07-16-22-03-45.jsonl
+[2025-07-16T22:03:45.668Z] Initialized openai client for model: gpt-4o
+[2025-07-16T22:03:45.668Z] Claude Bridge interceptor initialized
+[2025-07-16T22:03:46.404Z] Cleaning up interceptor...
+[2025-07-16T22:03:46.404Z] Cleanup complete.

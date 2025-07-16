@@ -27,6 +27,7 @@ import path from "path";
 import { fileURLToPath } from "url";
 import { patchClaudeBinary } from "./patch-claude.js";
 import { VERSION } from "./version.js";
+import type { BridgeConfig } from "./types.js";
 
 interface ClaudeArgs {
 	provider: Provider;
@@ -34,6 +35,7 @@ interface ClaudeArgs {
 	apiKey?: string | undefined;
 	baseURL?: string | undefined;
 	maxRetries?: number | undefined;
+	maxOutputTokens?: number | undefined;
 	logDir?: string | undefined;
 	patchClaude?: boolean | undefined;
 	debug?: boolean | undefined;
@@ -50,6 +52,7 @@ interface ParsedArgs {
 	apiKey?: string | undefined;
 	baseURL?: string | undefined;
 	maxRetries?: number | undefined;
+	maxOutputTokens?: number | undefined;
 	logDir?: string | undefined;
 	patchClaude?: boolean | undefined;
 	debug?: boolean | undefined;
@@ -127,6 +130,7 @@ OPTIONS:
   --apiKey <key>        API key for the provider
   --baseURL <url>       Custom API base URL
   --maxRetries <num>    Maximum number of retries for failed requests
+  --max-output-tokens <num>     Maximum output tokens (overrides provider defaults)
   --log-dir <dir>       Directory for log files (default: .claude-bridge)
   --patch-claude        Patch Claude binary to disable anti-debugging checks
   --debug               Enable debug logging (requests/responses to .claude-bridge/)
@@ -159,10 +163,11 @@ function showProviders(): void {
 				case "google":
 					console.log(`  google     Google models (Gemini, etc.)`);
 					break;
-				default:
+				default: {
 					// TypeScript will catch if we miss any provider cases
 					const _exhaustiveCheck: never = provider;
 					_exhaustiveCheck;
+				}
 			}
 		}
 	}
@@ -287,6 +292,19 @@ function parseArguments(argv: string[]): ParsedArgs {
 						process.exit(1);
 					}
 					args.maxRetries = retries;
+				}
+			}
+			i++;
+		} else if (arg === "--max-output-tokens") {
+			if (i + 1 < argv.length && argv[i + 1] !== undefined) {
+				const nextArg = argv[++i];
+				if (nextArg !== undefined) {
+					const tokens = parseInt(nextArg, 10);
+					if (isNaN(tokens) || tokens < 1) {
+						console.error(`❌ Invalid --max-output-tokens value: ${nextArg}`);
+						process.exit(1);
+					}
+					args.maxOutputTokens = tokens;
 				}
 			}
 			i++;
@@ -568,19 +586,25 @@ function runClaudeWithBridge(args: ClaudeArgs): number {
 	// Clean environment to avoid Claude's anti-debugging checks
 	const cleanEnv = { ...process.env };
 
+	// Create BridgeConfig object
+	const bridgeConfig: BridgeConfig = {
+		provider: args.provider,
+		model: args.model,
+		apiKey,
+		baseURL: args.baseURL,
+		maxRetries: args.maxRetries,
+		maxOutputTokens: args.maxOutputTokens,
+		logDirectory: args.logDir,
+		debug: args.debug,
+		trace: args.trace,
+	};
+
 	const result = spawnSync("node", spawnArgs, {
 		stdio: "inherit",
 		env: {
 			...cleanEnv,
 			NODE_OPTIONS: `${cleanEnv["NODE_OPTIONS"]} --no-deprecation`,
-			CLAUDE_BRIDGE_PROVIDER: args.provider,
-			CLAUDE_BRIDGE_MODEL: args.model,
-			CLAUDE_BRIDGE_API_KEY: apiKey,
-			CLAUDE_BRIDGE_BASE_URL: args.baseURL,
-			CLAUDE_BRIDGE_MAX_RETRIES: args.maxRetries?.toString(),
-			CLAUDE_BRIDGE_LOG_DIR: args.logDir,
-			CLAUDE_BRIDGE_DEBUG: args.debug?.toString(),
-			CLAUDE_BRIDGE_TRACE: args.trace?.toString(),
+			CLAUDE_BRIDGE_CONFIG: JSON.stringify(bridgeConfig),
 		},
 	});
 
@@ -650,6 +674,7 @@ async function main(argv: string[] = process.argv) {
 		apiKey: parsedArgs.apiKey,
 		baseURL: parsedArgs.baseURL,
 		maxRetries: parsedArgs.maxRetries,
+		maxOutputTokens: parsedArgs.maxOutputTokens,
 		logDir: parsedArgs.logDir,
 		patchClaude: parsedArgs.patchClaude || false,
 		debug: parsedArgs.debug || false,
