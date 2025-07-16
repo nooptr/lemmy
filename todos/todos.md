@@ -1,0 +1,1 @@
+- This does not produce any logs in the .html, but the .jsonl has the data. See .claude-trace/log-2025-07-16-20-08-23.jsonl and .claude-trace/log-2025-07-16-20-08-23.html
