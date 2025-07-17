@@ -47,6 +47,7 @@ export class ClaudeBridgeInterceptor {
 	private traceFile!: string;
 	private clientInfo!: ProviderClientInfo;
 	private pendingRequests = new Map<string, any>();
+	private toolIdMapping = new Map<string, string>(); // claudeId -> originalApiId
 
 	/**
 	 * Create a new interceptor instance (async factory)
@@ -197,7 +198,7 @@ export class ClaudeBridgeInterceptor {
 				return null;
 			}
 
-			return transformAnthropicToLemmy(anthropicRequest);
+			return transformAnthropicToLemmy(anthropicRequest, this.toolIdMapping);
 		} catch (error) {
 			if (error instanceof Error && error.message.includes("Multi-turn conversations")) {
 				this.logger.log(`Skipping transformation for multi-turn conversation: ${error.message}`);
@@ -284,16 +285,19 @@ export class ClaudeBridgeInterceptor {
 			}
 
 			// Convert to Anthropic SSE format
-			return new Response(createAnthropicSSE(askResult, this.clientInfo.model), {
-				status: 200,
-				statusText: "OK",
-				headers: {
-					"Content-Type": "text/event-stream",
-					"Cache-Control": "no-cache",
-					Connection: "keep-alive",
-					"anthropic-request-id": generateRequestId(),
+			return new Response(
+				createAnthropicSSE(askResult, (originalRequest as MessageCreateParamsBase).model, this.toolIdMapping),
+				{
+					status: 200,
+					statusText: "OK",
+					headers: {
+						"Content-Type": "text/event-stream; charset=utf-8",
+						"Cache-Control": "no-cache",
+						Connection: "keep-alive",
+						"anthropic-request-id": generateRequestId(),
+					},
 				},
-			});
+			);
 		} catch (error) {
 			this.logProviderError(error);
 			throw error;

@@ -13,7 +13,10 @@ import { convertAnthropicToolToLemmy } from "./tool-schemas.js";
 /**
  * Transform Anthropic API request to lemmy Context + Anthropic params
  */
-export function transformAnthropicToLemmy(anthropicRequest: MessageCreateParamsBase): SerializedContext {
+export function transformAnthropicToLemmy(
+	anthropicRequest: MessageCreateParamsBase,
+	toolIdMapping?: Map<string, string>,
+): SerializedContext {
 	const context = new Context();
 	const currentTime = new Date();
 
@@ -53,7 +56,7 @@ export function transformAnthropicToLemmy(anthropicRequest: MessageCreateParamsB
 	// Convert each Anthropic message to lemmy format and add to context
 	for (const anthropicMessage of anthropicRequest.messages) {
 		if (anthropicMessage.role === "user") {
-			const userMessage = convertAnthropicUserMessage(anthropicMessage, currentTime);
+			const userMessage = convertAnthropicUserMessage(anthropicMessage, currentTime, toolIdMapping);
 			context.addMessage(userMessage);
 		} else if (anthropicMessage.role === "assistant") {
 			const assistantMessage = convertAnthropicAssistantMessage(
@@ -71,7 +74,11 @@ export function transformAnthropicToLemmy(anthropicRequest: MessageCreateParamsB
 /**
  * Convert Anthropic user message to lemmy UserMessage format
  */
-function convertAnthropicUserMessage(anthropicMessage: MessageParam, timestamp: Date): UserMessage {
+function convertAnthropicUserMessage(
+	anthropicMessage: MessageParam,
+	timestamp: Date,
+	toolIdMapping?: Map<string, string>,
+): UserMessage {
 	const userMessage: UserMessage = {
 		role: "user",
 		timestamp,
@@ -98,10 +105,22 @@ function convertAnthropicUserMessage(anthropicMessage: MessageParam, timestamp: 
 
 			case "tool_result":
 				if ("tool_use_id" in block && "content" in block && block.tool_use_id) {
-					toolResults.push({
-						toolCallId: block.tool_use_id,
-						content: typeof block.content === "string" ? block.content : JSON.stringify(block.content),
-					});
+					// Map Claude ID back to original API ID
+					const originalApiId = toolIdMapping?.get(block.tool_use_id) || block.tool_use_id;
+
+					if (typeof block.content === "string") {
+						toolResults.push({
+							toolCallId: originalApiId,
+							content: block.content,
+						});
+					} else {
+						// For structured content, preserve both the content field and the structure
+						toolResults.push({
+							toolCallId: originalApiId,
+							content: JSON.stringify(block.content),
+							...block.content,
+						} as ToolResult & Record<string, unknown>);
+					}
 				}
 				break;
 

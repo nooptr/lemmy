@@ -230,10 +230,19 @@ function convertAnthropicUserMessage(anthropicMessage: MessageParam, timestamp: 
 
 			case "tool_result":
 				if ("tool_use_id" in block && "content" in block && block.tool_use_id) {
-					toolResults.push({
-						toolCallId: block.tool_use_id,
-						content: typeof block.content === "string" ? block.content : JSON.stringify(block.content),
-					});
+					if (typeof block.content === "string") {
+						toolResults.push({
+							toolCallId: block.tool_use_id,
+							content: block.content,
+						});
+					} else {
+						// For structured content, preserve both the content field and the structure
+						toolResults.push({
+							toolCallId: block.tool_use_id,
+							content: JSON.stringify(block.content),
+							...block.content,
+						} as ToolResult & Record<string, unknown>);
+					}
 				}
 				break;
 

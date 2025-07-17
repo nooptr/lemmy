@@ -1,9 +1,20 @@
 import type { AskResult } from "@mariozechner/lemmy";
 
 /**
+ * Generate Claude-style tool use ID
+ */
+function generateClaudeToolId(): string {
+	return `toolu_${Date.now().toString(36)}${Math.random().toString(36).substring(2, 15)}`;
+}
+
+/**
  * Create Anthropic-compatible SSE stream from lemmy AskResult
  */
-export function createAnthropicSSE(askResult: AskResult, model: string): ReadableStream<Uint8Array> {
+export function createAnthropicSSE(
+	askResult: AskResult,
+	model: string,
+	toolIdMapping?: Map<string, string>,
+): ReadableStream<Uint8Array> {
 	const messageId = `msg_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
 
 	return new ReadableStream({
@@ -34,7 +45,13 @@ export function createAnthropicSSE(askResult: AskResult, model: string): Readabl
 					content: [],
 					stop_reason: null,
 					stop_sequence: null,
-					usage: { input_tokens: askResult.tokens?.input || 0, output_tokens: 0 },
+					usage: {
+						input_tokens: askResult.tokens?.input || 0,
+						cache_creation_input_tokens: 0,
+						cache_read_input_tokens: 0,
+						output_tokens: 0,
+						service_tier: "standard",
+					},
 				},
 			});
 
@@ -81,10 +98,16 @@ export function createAnthropicSSE(askResult: AskResult, model: string): Readabl
 			// Tool calls
 			if (askResult.message.toolCalls?.length) {
 				for (const toolCall of askResult.message.toolCalls) {
+					// Generate Claude-style ID and store mapping
+					const claudeId = generateClaudeToolId();
+					if (toolIdMapping) {
+						toolIdMapping.set(claudeId, toolCall.id);
+					}
+
 					writeEvent("content_block_start", {
 						type: "content_block_start",
 						index: blockIndex,
-						content_block: { type: "tool_use", id: toolCall.id, name: toolCall.name, input: {} },
+						content_block: { type: "tool_use", id: claudeId, name: toolCall.name, input: {} },
 					});
 					const argsJson = JSON.stringify(toolCall.arguments);
 					for (let i = 0; i < argsJson.length; i += 50) {
