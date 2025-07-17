@@ -32,7 +32,7 @@ export interface JSONSchema {
 	properties?: Record<string, JSONSchema>;
 	items?: JSONSchema;
 	required?: string[];
-	enum?: any[];
+	enum?: unknown[];
 	oneOf?: JSONSchema[];
 	anyOf?: JSONSchema[];
 	allOf?: JSONSchema[];
@@ -40,7 +40,7 @@ export interface JSONSchema {
 	definitions?: Record<string, JSONSchema>;
 	// Additional properties
 	description?: string;
-	[key: string]: any;
+	[key: string]: unknown;
 }
 
 export interface BridgeConfig {

@@ -419,7 +419,7 @@ export class OpenAIClient implements ChatClient<OpenAIAskOptions> {
 			const apiError = error as Error & { status: number; headers?: Record<string, string> };
 			const modelError: ModelError = {
 				type: this.getErrorType(apiError.status),
-				message: apiError.message,
+				message: apiError.message + ":\n" + JSON.stringify(error),
 				retryable: this.isRetryable(apiError.status),
 				...(this.getRetryAfter(apiError) !== undefined && {
 					retryAfter: this.getRetryAfter(apiError)!,
@@ -431,7 +431,7 @@ export class OpenAIClient implements ChatClient<OpenAIAskOptions> {
 		// Handle other error types
 		const modelError: ModelError = {
 			type: "api_error",
-			message: error instanceof Error ? error.message : "Unknown error",
+			message: error instanceof Error ? error.message : JSON.stringify(error),
 			retryable: false,
 		};
 		return { type: "error", error: modelError };

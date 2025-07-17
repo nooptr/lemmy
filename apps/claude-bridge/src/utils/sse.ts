@@ -8,10 +8,10 @@ export interface SSEEvent {
 /**
  * Parse Server-Sent Events (SSE) from raw text data
  */
-export function parseSSE(sseData: string): any[] {
-	const events: any[] = [];
+export function parseSSE(sseData: string): SSEEvent[] {
+	const events: SSEEvent[] = [];
 	const lines = sseData.split("\n");
-	let currentEvent: any = {};
+	let currentEvent: Partial<SSEEvent> = {};
 
 	for (const line of lines) {
 		if (line.startsWith("data:")) {
@@ -33,11 +33,11 @@ export function parseSSE(sseData: string): any[] {
 /**
  * Extract assistant message from parsed SSE events
  */
-export function extractAssistantFromSSE(events: any[], logger?: { error: (msg: string) => void }): Message | null {
+export function extractAssistantFromSSE(events: SSEEvent[], logger?: { error: (msg: string) => void }): Message | null {
 	try {
 		let content = "",
 			thinking = "";
-		const toolCalls: any[] = [];
+		const toolCalls: Array<{ id: string; name: string; arguments: Record<string, unknown> }> = [];
 		let errorMessage = "";
 
 		for (const event of events) {
@@ -72,7 +72,7 @@ export function extractAssistantFromSSE(events: any[], logger?: { error: (msg: s
 			}
 		}
 
-		const message: any = { role: "assistant" };
+		const message: Message = { role: "assistant" };
 		if (thinking) message.thinking = thinking;
 		if (content) message.content = content;
 		if (toolCalls.length > 0) message.toolCalls = toolCalls;

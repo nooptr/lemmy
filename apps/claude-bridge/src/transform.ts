@@ -22,7 +22,7 @@ import type {
 /**
  * Convert JSON Schema to Zod schema
  */
-export function jsonSchemaToZod(jsonSchema: any): z.ZodSchema {
+export function jsonSchemaToZod(jsonSchema: JSONSchema): z.ZodSchema {
 	if (!jsonSchema || typeof jsonSchema !== "object") {
 		return z.any();
 	}
