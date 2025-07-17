@@ -12,6 +12,7 @@ export const ProviderSchema = z.enum(["anthropic", "openai", "google"]);
 
 export const BaseAskOptionsSchema = z.object({
 	maxOutputTokens: z.coerce.number().min(1).optional().describe("Maximum number of output tokens to generate"),
+	abortSignal: z.custom<AbortSignal>().optional().describe("AbortSignal to cancel the request"),
 });
 
 export const AnthropicAskOptionsSchema = BaseAskOptionsSchema.extend({

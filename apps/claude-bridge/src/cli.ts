@@ -40,6 +40,7 @@ interface ClaudeArgs {
 	patchClaude?: boolean | undefined;
 	debug?: boolean | undefined;
 	trace?: boolean | undefined;
+	claudeBinary?: string | undefined;
 	claudeArgs: string[];
 }
 
@@ -54,6 +55,7 @@ interface ParsedArgs {
 	maxRetries?: number | undefined;
 	maxOutputTokens?: number | undefined;
 	logDir?: string | undefined;
+	claudeBinary?: string | undefined;
 	patchClaude?: boolean | undefined;
 	debug?: boolean | undefined;
 	claudeArgs: string[];
@@ -132,6 +134,7 @@ OPTIONS:
   --maxRetries <num>    Maximum number of retries for failed requests
   --max-output-tokens <num>     Maximum output tokens (overrides provider defaults)
   --log-dir <dir>       Directory for log files (default: .claude-bridge)
+  --claude-binary <path>  Path to Claude Code CLI binary (default: auto-detect)
   --patch-claude        Patch Claude binary to disable anti-debugging checks
   --debug               Enable debug logging (requests/responses to .claude-bridge/)
   --trace               Spy mode: log all Claude ↔ Anthropic communication (implies --debug)
@@ -313,6 +316,11 @@ function parseArguments(argv: string[]): ParsedArgs {
 				args.logDir = argv[++i];
 			}
 			i++;
+		} else if (arg === "--claude-binary") {
+			if (i + 1 < argv.length && argv[i + 1] !== undefined) {
+				args.claudeBinary = argv[++i];
+			}
+			i++;
 		} else if (arg === "--patch-claude") {
 			args.patchClaude = true;
 			i++;
@@ -447,7 +455,15 @@ function resolveToJsFile(filePath: string): string {
 	}
 }
 
-function findClaudeExecutable(): string {
+function findClaudeExecutable(customPath?: string): string {
+	if (customPath) {
+		console.log(`🔍 Using custom Claude binary: ${customPath}`);
+		if (!fs.existsSync(customPath)) {
+			console.error(`❌ Custom Claude binary not found: ${customPath}`);
+			process.exit(1);
+		}
+		return resolveToJsFile(customPath);
+	}
 	try {
 		let claudePath = require("child_process")
 			.execSync("which claude", {
@@ -559,7 +575,7 @@ function runClaudeWithBridge(args: ClaudeArgs): number {
 		}
 	}
 
-	let claudeExe = findClaudeExecutable();
+	let claudeExe = findClaudeExecutable(args.claudeBinary);
 	if (!claudeExe) {
 		console.error("❌ Claude CLI not found in PATH");
 		console.error("❌ Please install Claude Code CLI first");
@@ -577,7 +593,7 @@ function runClaudeWithBridge(args: ClaudeArgs): number {
 	const interceptorLoader = path.join(__dirname, "interceptor-loader.js");
 
 	// Filter out debugging flags from node arguments
-	const cleanNodeArgs = ["--import", interceptorLoader];
+	const cleanNodeArgs = ["--import", interceptorLoader, "--no-deprecation"];
 
 	const spawnArgs = [...cleanNodeArgs, claudeExe, ...args.claudeArgs];
 
@@ -644,6 +660,7 @@ async function main(argv: string[] = process.argv) {
 			model: "claude-3-5-sonnet-20241022", // dummy, ignored in trace mode
 			trace: true,
 			debug: true, // trace implies debug
+			claudeBinary: parsedArgs.claudeBinary,
 			claudeArgs: parsedArgs.claudeArgs,
 			// All other flags ignored in trace mode
 		});
@@ -679,6 +696,7 @@ async function main(argv: string[] = process.argv) {
 		patchClaude: parsedArgs.patchClaude || false,
 		debug: parsedArgs.debug || false,
 		trace: parsedArgs.trace || false,
+		claudeBinary: parsedArgs.claudeBinary,
 		claudeArgs: parsedArgs.claudeArgs,
 	});
 

@@ -292,6 +292,117 @@ const interceptorTests: Test[] = [
 			}
 		},
 	},
+
+	{
+		name: "Abort Signal Handling",
+		run: async () => {
+			try {
+				const { ClaudeBridgeInterceptor } = await import("../src/interceptor.js");
+
+				// Test that interceptor properly handles abort signals
+				const interceptor = await ClaudeBridgeInterceptor.create({
+					provider: "openai", 
+					model: "gpt-4o",
+					apiKey: "test-key",
+					logDirectory: "/tmp",
+					debug: false,
+				});
+
+				// Mock fetch to simulate Anthropic API calls
+				const originalFetch = global.fetch;
+				const mockResponses: Array<{ url: string; aborted: boolean }> = [];
+				
+				global.fetch = async (input: any, init?: any) => {
+					const url = typeof input === "string" ? input : input.toString();
+					
+					// Check if this is an Anthropic API call
+					if (url.includes("anthropic.com") || url.includes("api.anthropic.com")) {
+						// Record if the request was aborted
+						mockResponses.push({
+							url,
+							aborted: init?.signal?.aborted || false
+						});
+						
+						// If aborted, throw AbortError
+						if (init?.signal?.aborted) {
+							throw new DOMException("Request was aborted", "AbortError");
+						}
+						
+						// Return mock response
+						return new Response(JSON.stringify({ message: "test" }), {
+							status: 200,
+							headers: { "content-type": "application/json" }
+						});
+					}
+					
+					// For non-Anthropic calls, use original fetch
+					return originalFetch(input, init);
+				};
+
+				// Instrument fetch
+				interceptor.instrumentFetch();
+
+				// Test 1: Normal request (not aborted)
+				const normalController = new AbortController();
+				try {
+					await global.fetch("https://api.anthropic.com/v1/messages", {
+						method: "POST",
+						signal: normalController.signal,
+						headers: { "content-type": "application/json" },
+						body: JSON.stringify({ model: "claude-3-sonnet", messages: [] })
+					});
+				} catch (error) {
+					// Expected to potentially fail due to mocking, but shouldn't be abort error
+					if (error instanceof DOMException && error.name === "AbortError") {
+						throw new Error("Normal request should not be aborted");
+					}
+				}
+
+				// Test 2: Pre-aborted request
+				const abortedController = new AbortController();
+				abortedController.abort();
+				
+				let caughtAbortError = false;
+				try {
+					await global.fetch("https://api.anthropic.com/v1/messages", {
+						method: "POST", 
+						signal: abortedController.signal,
+						headers: { "content-type": "application/json" },
+						body: JSON.stringify({ model: "claude-3-sonnet", messages: [] })
+					});
+				} catch (error) {
+					if (error instanceof DOMException && error.name === "AbortError") {
+						caughtAbortError = true;
+					}
+				}
+
+				// Restore original fetch
+				global.fetch = originalFetch;
+
+				assert(caughtAbortError, "Should throw AbortError for aborted requests");
+
+				return {
+					name: "Abort Signal Handling",
+					success: true,
+					message: "Abort signal handling working correctly",
+					duration: 0,
+				};
+			} catch (error) {
+				// Restore fetch in case of error
+				if (global.fetch !== globalThis.fetch) {
+					global.fetch = globalThis.fetch;
+				}
+				
+				return {
+					name: "Abort Signal Handling",
+					success: false,
+					message: error instanceof Error ? error.message : String(error),
+					duration: 0,
+					error: error instanceof Error ? error : new Error(String(error)),
+				};
+			}
+		},
+	},
 ];
 
 // Test suite definitions

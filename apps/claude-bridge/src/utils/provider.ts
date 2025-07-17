@@ -134,6 +134,7 @@ export function validateCapabilities(
 	const warnings: string[] = [];
 	const adjustments: CapabilityValidationResult["adjustments"] = {};
 
+	console.log(`Max output tokens for model: ${modelData.maxOutputTokens}`);
 	// Check output token limits
 	if (anthropicRequest.max_tokens && anthropicRequest.max_tokens > modelData.maxOutputTokens) {
 		warnings.push(

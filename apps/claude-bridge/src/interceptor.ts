@@ -124,6 +124,12 @@ export class ClaudeBridgeInterceptor {
 		const url = typeof input === "string" ? input : input instanceof URL ? input.toString() : input.url;
 		this.logger.log(`Intercepted Claude request: ${url}`);
 
+		// Check if request was already aborted before we start processing
+		if (init.signal?.aborted) {
+			this.logger.log(`Request already aborted: ${url}`);
+			throw new DOMException("Request was aborted", "AbortError");
+		}
+
 		const requestId = generateRequestId();
 		const requestData = await parseAnthropicMessageCreateRequest(url, init, this.logger);
 
@@ -131,7 +137,7 @@ export class ClaudeBridgeInterceptor {
 		this.detectProblematicMessagePatterns(requestData);
 
 		const transformResult = await this.tryTransform(requestData);
-		this.pendingRequests.set(requestId, requestData);
+		this.pendingRequests.set(requestId, { ...requestData, abortSignal: init.signal });
 
 		// Log trace information if in trace mode
 		if (this.config.trace && requestData.body) {
@@ -151,12 +157,22 @@ export class ClaudeBridgeInterceptor {
 		}
 
 		try {
+			// Check abort signal before making calls
+			if (init.signal?.aborted) {
+				this.logger.log(`Request aborted before provider call: ${url}`);
+				throw new DOMException("Request was aborted", "AbortError");
+			}
+
 			// In trace mode, always call original Anthropic API (no transformation)
 			// Get response from provider or fallback to Anthropic
 			const response =
 				this.config.trace || !transformResult
 					? await originalFetch(input, init)
-					: await this.callProvider(transformResult, requestData.body);
+					: await this.callProvider(
+							transformResult,
+							requestData.body,
+							init.signal == null ? undefined : init.signal,
+						);
 
 			// Log everything
 			await this.logComplete(requestData, response, transformResult, requestId);
@@ -195,6 +211,7 @@ export class ClaudeBridgeInterceptor {
 	private async callProvider(
 		transformResult: SerializedContext,
 		originalRequest: MessageCreateParamsBase,
+		abortSignal?: AbortSignal,
 	): Promise<Response> {
 		try {
 			// Validate capabilities (skip for unknown models)
@@ -245,6 +262,17 @@ export class ClaudeBridgeInterceptor {
 			if (this.config.maxOutputTokens) {
 				askOptions.maxOutputTokens = this.config.maxOutputTokens;
 				this.logger.log(`Overriding maxOutputTokens with config value: ${this.config.maxOutputTokens}`);
+			}
+
+			// Add abort signal if provided
+			if (abortSignal) {
+				askOptions.abortSignal = abortSignal;
+			}
+
+			// Check if request was aborted before making the call
+			if (abortSignal?.aborted) {
+				this.logger.log("Request aborted before provider ask call");
+				throw new DOMException("Request was aborted", "AbortError");
 			}
 
 			this.logger.log(`Calling ${this.clientInfo.provider} with model: ${this.clientInfo.model}`);
@@ -432,7 +460,7 @@ export async function initializeInterceptor(config?: BridgeConfig): Promise<Clau
 	if (!process.env["CLAUDE_BRIDGE_CONFIG"]) {
 		throw new Error("CLAUDE_BRIDGE_CONFIG environment variable not set");
 	}
-	
+
 	let defaultConfig: BridgeConfig;
 	try {
 		defaultConfig = JSON.parse(process.env["CLAUDE_BRIDGE_CONFIG"]);

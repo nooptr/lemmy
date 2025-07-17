@@ -111,6 +111,16 @@ export class AnthropicClient implements ChatClient<AnthropicAskOptions> {
 	): Promise<AskResult> {
 		const startTime = performance.now();
 		try {
+			// Check if request was already aborted
+			if (options?.abortSignal?.aborted) {
+				const modelError: ModelError = {
+					type: "invalid_request",
+					message: "Request was aborted",
+					retryable: false,
+				};
+				return { type: "error", error: modelError };
+			}
+
 			// Convert input to AskInput format
 			const userInput: AskInput = typeof input === "string" ? { content: input } : input;
 
@@ -140,8 +150,20 @@ export class AnthropicClient implements ChatClient<AnthropicAskOptions> {
 			const mergedOptions = { ...this.config.defaults, ...options };
 			const requestParams = this.buildAnthropicParams(mergedOptions, messages);
 
-			// Execute streaming request
-			const stream = await this.anthropic.messages.create(requestParams);
+			// Check abort signal before making request
+			if (options?.abortSignal?.aborted) {
+				const modelError: ModelError = {
+					type: "invalid_request",
+					message: "Request was aborted",
+					retryable: false,
+				};
+				return { type: "error", error: modelError };
+			}
+
+			// Execute streaming request with abort signal
+			const stream = await this.anthropic.messages.create(requestParams, {
+				signal: options?.abortSignal,
+			});
 
 			return await this.processStream(stream, options, startTime);
 		} catch (error) {
@@ -299,6 +321,16 @@ export class AnthropicClient implements ChatClient<AnthropicAskOptions> {
 
 		try {
 			for await (const event of stream) {
+				// Check abort signal during streaming
+				if (options?.abortSignal?.aborted) {
+					const modelError: ModelError = {
+						type: "invalid_request",
+						message: "Request was aborted during streaming",
+						retryable: false,
+					};
+					return { type: "error", error: modelError };
+				}
+
 				switch (event.type) {
 					case "message_start":
 						inputTokens = event.message.usage.input_tokens;
@@ -464,6 +496,16 @@ export class AnthropicClient implements ChatClient<AnthropicAskOptions> {
 	}
 
 	private handleError(error: unknown): AskResult {
+		// Handle abort errors specifically
+		if (error instanceof DOMException && error.name === "AbortError") {
+			const modelError: ModelError = {
+				type: "invalid_request",
+				message: "Request was aborted",
+				retryable: false,
+			};
+			return { type: "error", error: modelError };
+		}
+
 		// Convert various error types to ModelError
 		if (error instanceof Error && "status" in error) {
 			const apiError = error as Error & { status: number; headers?: Record<string, string> };
