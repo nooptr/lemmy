@@ -22,7 +22,7 @@ import {
 	validateProvider,
 	type ModelValidationConfig,
 } from "@mariozechner/lemmy-cli-args";
-import { spawnSync } from "child_process";
+import { spawnSync, execSync } from "child_process";
 import path from "path";
 import { fileURLToPath } from "url";
 import { patchClaudeBinary } from "./patch-claude.js";
@@ -465,8 +465,7 @@ function findClaudeExecutable(customPath?: string): string {
 		return resolveToJsFile(customPath);
 	}
 	try {
-		let claudePath = require("child_process")
-			.execSync("which claude", {
+		let claudePath = execSync("which claude", {
 				encoding: "utf-8",
 			})
 			.trim();
