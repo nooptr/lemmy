@@ -110,7 +110,10 @@ export async function parseResponse(response: Response): Promise<{
  * Check if URL is an Anthropic API endpoint
  */
 export function isAnthropicAPI(url: string): boolean {
-	return url.includes("api.anthropic.com") && url.includes("/v1/messages");
+	return (
+		url.includes(process.env.ANTHROPIC_BASE_URL.replace(/https:\/\//g, "") || "api.anthropic.com") &&
+		url.includes("/v1/messages")
+	);
 }
 
 /**

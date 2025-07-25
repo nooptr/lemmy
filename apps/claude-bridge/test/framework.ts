@@ -310,6 +310,7 @@ export function createBasicBridgeTest(provider: Provider, model: string, display
 			await runner.setup();
 
 			try {
+				const anthropicBaseUrl = process.env.ANTHROPIC_BASE_URL.replace(/https:\/\//g, "");
 				const result = await runner.runCLITest({
 					provider,
 					model,
@@ -317,7 +318,7 @@ export function createBasicBridgeTest(provider: Provider, model: string, display
 					expectedInLogs: [
 						"Claude Bridge interceptor initialized",
 						"Intercepted Claude request",
-						"anthropic.com/v1/messages",
+						anthropicBaseUrl + "/v1/messages",
 						"Calling OpenAI",
 						"Successfully forwarded request",
 					],

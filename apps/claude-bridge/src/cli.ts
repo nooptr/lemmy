@@ -28,6 +28,7 @@ import { fileURLToPath } from "url";
 import { patchClaudeBinary } from "./patch-claude.js";
 import { VERSION } from "./version.js";
 import type { BridgeConfig } from "./types.js";
+import { parseAnthropicMessageCreateRequest } from "./utils/request-parser.js";
 
 interface ClaudeArgs {
 	provider: Provider;
@@ -466,9 +467,8 @@ function findClaudeExecutable(customPath?: string): string {
 	}
 	try {
 		let claudePath = execSync("which claude", {
-				encoding: "utf-8",
-			})
-			.trim();
+			encoding: "utf-8",
+		}).trim();
 
 		// Handle shell aliases (e.g., "claude: aliased to /path/to/claude")
 		const aliasMatch = claudePath.match(/:\s*aliased to\s+(.+)$/);

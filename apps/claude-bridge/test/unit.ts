@@ -154,10 +154,14 @@ const utilityTests: Test[] = [
 		run: async () => {
 			try {
 				const { isAnthropicAPI, generateRequestId } = await import("../src/utils/request-parser.js");
+				const anthropicBaseUrl = process.env.ANTHROPIC_BASE_URL.replace(/https:\/\//g, "");
 
 				// Test API detection
-				assert(isAnthropicAPI("https://api.anthropic.com/v1/messages"), "Should detect Anthropic API");
-				assert(!isAnthropicAPI("https://api.openai.com/v1/chat"), "Should not detect OpenAI as Anthropic");
+				assert(isAnthropicAPI("https://" + anthropicBaseUrl + "/v1/messages"), "Should detect Anthropic API");
+				assert(
+					!isAnthropicAPI("https://" + anthropicBaseUrl + "/v1/chat"),
+					"Should not detect OpenAI as Anthropic",
+				);
 
 				// Test request ID generation
 				const id1 = generateRequestId();
@@ -301,7 +305,7 @@ const interceptorTests: Test[] = [
 
 				// Test that interceptor properly handles abort signals
 				const interceptor = await ClaudeBridgeInterceptor.create({
-					provider: "openai", 
+					provider: "openai",
 					model: "gpt-4o",
 					apiKey: "test-key",
 					logDirectory: "/tmp",
@@ -311,30 +315,36 @@ const interceptorTests: Test[] = [
 				// Mock fetch to simulate Anthropic API calls
 				const originalFetch = global.fetch;
 				const mockResponses: Array<{ url: string; aborted: boolean }> = [];
-				
+
+				const anthropicBaseUrl = process.env.ANTHROPIC_BASE_URL.replace(/https:\/\//g, "");
+
 				global.fetch = async (input: any, init?: any) => {
 					const url = typeof input === "string" ? input : input.toString();
-					
+
 					// Check if this is an Anthropic API call
-					if (url.includes("anthropic.com") || url.includes("api.anthropic.com")) {
+					if (
+						url.includes("anthropic.com") ||
+						url.includes("api.anthropic.com") ||
+						url.includes(anthropicBaseUrl)
+					) {
 						// Record if the request was aborted
 						mockResponses.push({
 							url,
-							aborted: init?.signal?.aborted || false
+							aborted: init?.signal?.aborted || false,
 						});
-						
+
 						// If aborted, throw AbortError
 						if (init?.signal?.aborted) {
 							throw new DOMException("Request was aborted", "AbortError");
 						}
-						
+
 						// Return mock response
 						return new Response(JSON.stringify({ message: "test" }), {
 							status: 200,
-							headers: { "content-type": "application/json" }
+							headers: { "content-type": "application/json" },
 						});
 					}
-					
+
 					// For non-Anthropic calls, use original fetch
 					return originalFetch(input, init);
 				};
@@ -345,11 +355,11 @@ const interceptorTests: Test[] = [
 				// Test 1: Normal request (not aborted)
 				const normalController = new AbortController();
 				try {
-					await global.fetch("https://api.anthropic.com/v1/messages", {
+					await global.fetch("https://" + anthropicBaseUrl + "/v1/messages", {
 						method: "POST",
 						signal: normalController.signal,
 						headers: { "content-type": "application/json" },
-						body: JSON.stringify({ model: "claude-3-sonnet", messages: [] })
+						body: JSON.stringify({ model: "claude-3-sonnet", messages: [] }),
 					});
 				} catch (error) {
 					// Expected to potentially fail due to mocking, but shouldn't be abort error
@@ -361,14 +371,14 @@ const interceptorTests: Test[] = [
 				// Test 2: Pre-aborted request
 				const abortedController = new AbortController();
 				abortedController.abort();
-				
+
 				let caughtAbortError = false;
 				try {
-					await global.fetch("https://api.anthropic.com/v1/messages", {
-						method: "POST", 
+					await global.fetch("https://" + anthropicBaseUrl + "/v1/messages", {
+						method: "POST",
 						signal: abortedController.signal,
 						headers: { "content-type": "application/json" },
-						body: JSON.stringify({ model: "claude-3-sonnet", messages: [] })
+						body: JSON.stringify({ model: "claude-3-sonnet", messages: [] }),
 					});
 				} catch (error) {
 					if (error instanceof DOMException && error.name === "AbortError") {
@@ -392,7 +402,7 @@ const interceptorTests: Test[] = [
 				if (global.fetch !== globalThis.fetch) {
 					global.fetch = globalThis.fetch;
 				}
-				
+
 				return {
 					name: "Abort Signal Handling",
 					success: false,
