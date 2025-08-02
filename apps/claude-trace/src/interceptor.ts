@@ -45,10 +45,10 @@ export class ClaudeTrafficLogger {
 		// Clear log file
 		fs.writeFileSync(this.logFile, "");
 
-		// Output the actual filenames
+		// Output the actual filenames with absolute paths
 		console.log(`Logs will be written to:`);
-		console.log(`  JSONL: ${this.logFile}`);
-		console.log(`  HTML:  ${this.htmlFile}`);
+		console.log(`  JSONL: ${path.resolve(this.logFile)}`);
+		console.log(`  HTML:  ${path.resolve(this.htmlFile)}`);
 	}
 
 	private isClaudeAPI(url: string | URL): boolean {

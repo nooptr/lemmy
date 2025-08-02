@@ -1,6 +1,6 @@
 {
 	"name": "@mariozechner/claude-trace",
-	"version": "1.0.3",
+	"version": "1.0.6",
 	"description": "Record all your interactions with Claude Code as you develop your projects",
 	"main": "dist/index.js",
 	"bin": {
@@ -49,6 +49,7 @@
 		"typescript": "^5.0.0"
 	},
 	"dependencies": {
-		"@anthropic-ai/sdk": "^0.52.0"
+		"@anthropic-ai/sdk": "^0.52.0",
+		"@mariozechner/claude-trace": "^1.0.3"
 	}
 }
