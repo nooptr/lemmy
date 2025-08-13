@@ -35,12 +35,14 @@ ${colors.yellow}OPTIONS:${colors.reset}
   --run-with         Pass all following arguments to Claude process
   --include-all-requests Include all requests made through fetch, otherwise only requests to v1/messages with more than 2 messages in the context
   --no-open          Don't open generated HTML file in browser
+  --log              Specify custom log file base name (without extension)
   --claude-path      Specify custom path to Claude binary
   --help, -h         Show this help message
 
 ${colors.yellow}MODES:${colors.reset}
   ${colors.green}Interactive logging:${colors.reset}
     claude-trace                               Start Claude with traffic logging
+    claude-trace --log my-session              Start Claude with custom log file name
     claude-trace --run-with chat                    Run Claude with specific command
     claude-trace --run-with chat --model sonnet-3.5 Run Claude with multiple arguments
 
@@ -59,6 +61,9 @@ ${colors.yellow}MODES:${colors.reset}
 ${colors.yellow}EXAMPLES:${colors.reset}
   # Start Claude with logging
   claude-trace
+
+  # Start Claude with custom log file name
+  claude-trace --log my-session
 
   # Run Claude chat with logging
   claude-trace --run-with chat
@@ -89,6 +94,7 @@ ${colors.yellow}EXAMPLES:${colors.reset}
 
 ${colors.yellow}OUTPUT:${colors.reset}
   Logs are saved to: ${colors.green}.claude-trace/log-YYYY-MM-DD-HH-MM-SS.{jsonl,html}${colors.reset}
+  With --log NAME:   ${colors.green}.claude-trace/NAME.{jsonl,html}${colors.reset}
 
 ${colors.yellow}MIGRATION:${colors.reset}
   This tool replaces Python-based claude-logger and claude-token.py scripts
@@ -227,6 +233,7 @@ async function runClaudeWithInterception(
 	includeAllRequests: boolean = false,
 	openInBrowser: boolean = false,
 	customClaudePath?: string,
+	logBaseName?: string,
 ): Promise<void> {
 	log("Claude Trace", "blue");
 	log("Starting Claude with traffic logging", "yellow");
@@ -250,6 +257,7 @@ async function runClaudeWithInterception(
 			NODE_OPTIONS: "--no-deprecation",
 			CLAUDE_TRACE_INCLUDE_ALL_REQUESTS: includeAllRequests ? "true" : "false",
 			CLAUDE_TRACE_OPEN_BROWSER: openInBrowser ? "true" : "false",
+			...(logBaseName ? { CLAUDE_TRACE_LOG_NAME: logBaseName } : {}),
 		},
 		stdio: "inherit",
 		cwd: process.cwd(),
@@ -472,6 +480,13 @@ async function main(): Promise<void> {
 		customClaudePath = claudeTraceArgs[claudePathIndex + 1];
 	}
 
+	// Check for custom log base name
+	let logBaseName: string | undefined;
+	const logIndex = claudeTraceArgs.indexOf("--log");
+	if (logIndex !== -1 && claudeTraceArgs[logIndex + 1]) {
+		logBaseName = claudeTraceArgs[logIndex + 1];
+	}
+
 	// Scenario 2: --extract-token
 	if (claudeTraceArgs.includes("--extract-token")) {
 		await extractToken(customClaudePath);
@@ -510,7 +525,7 @@ async function main(): Promise<void> {
 	}
 
 	// Scenario 1: No args (or claude with args) -> launch claude with interception
-	await runClaudeWithInterception(claudeArgs, includeAllRequests, openInBrowser, customClaudePath);
+	await runClaudeWithInterception(claudeArgs, includeAllRequests, openInBrowser, customClaudePath, logBaseName);
 }
 
 main().catch((error) => {

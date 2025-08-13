@@ -6,6 +6,7 @@ import { HTMLGenerator } from "./html-generator";
 
 export interface InterceptorConfig {
 	logDirectory?: string;
+	logBaseName?: string;
 	enableRealTimeHTML?: boolean;
 	logLevel?: "debug" | "info" | "warn" | "error";
 }
@@ -33,11 +34,13 @@ export class ClaudeTrafficLogger {
 			fs.mkdirSync(this.logDir, { recursive: true });
 		}
 
-		// Generate timestamped filenames
-		const timestamp = new Date().toISOString().replace(/[:.]/g, "-").replace("T", "-").slice(0, -5); // Remove milliseconds and Z
+		// Generate filenames based on custom name or timestamp
+		const logBaseName = config?.logBaseName || process.env.CLAUDE_TRACE_LOG_NAME;
+		const fileBaseName =
+			logBaseName || `log-${new Date().toISOString().replace(/[:.]/g, "-").replace("T", "-").slice(0, -5)}`; // Remove milliseconds and Z
 
-		this.logFile = path.join(this.logDir, `log-${timestamp}.jsonl`);
-		this.htmlFile = path.join(this.logDir, `log-${timestamp}.html`);
+		this.logFile = path.join(this.logDir, `${fileBaseName}.jsonl`);
+		this.htmlFile = path.join(this.logDir, `${fileBaseName}.html`);
 
 		// Initialize HTML generator
 		this.htmlGenerator = new HTMLGenerator();
